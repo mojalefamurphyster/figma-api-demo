@@ -6,6 +6,8 @@ const figma = require('./lib/figma');
 const headers = new fetch.Headers();
 let devToken = process.env.DEV_TOKEN;
 
+console.log('process.env.DEV_TOKEN =', process.env.DEV_TOKEN);
+
 if (process.argv.length < 3) {
   console.log('Usage: node setup.js <file-key> [figma-dev-token]');
   process.exit(0);
@@ -127,18 +129,23 @@ async function main() {
     }
   }
 
+  let imagesResp = await fetch(`${baseUrl}/v1/files/${fileKey}/images`, {headers});
+  let imagesJson = await imagesResp.json();
+
+  const imagesLinks = imagesJson.meta.images || {}
+
   const componentMap = {};
   let contents = `import React, { PureComponent } from 'react';\n`;
   let nextSection = '';
 
   for (let i=0; i<canvas.children.length; i++) {
     const child = canvas.children[i]
-    if (child.name.charAt(0) === '#' && child.visible !== false) {
+    if (child.visible !== false) {
       const child = canvas.children[i];
-      figma.createComponent(child, images, componentMap);
-      nextSection += `export class Master${child.name.replace(/\W+/g, "")} extends PureComponent {\n`;
+      figma.createComponent(child, images, imagesLinks, componentMap);
+      nextSection += `export class Main${child.name.replace(/\W+/g, "")} extends PureComponent {\n`;
       nextSection += "  render() {\n";
-      nextSection += `    return <div className="master" style={{backgroundColor: "${figma.colorString(child.backgroundColor)}"}}>\n`;
+      nextSection += `    return <div className="main" style={{backgroundColor: "${figma.colorString(child.backgroundColor)}"}}>\n`;
       nextSection += `      <C${child.name.replace(/\W+/g, "")} {...this.props} nodeId="${child.id}" />\n`;
       nextSection += "    </div>\n";
       nextSection += "  }\n";

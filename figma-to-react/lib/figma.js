@@ -3,36 +3,31 @@ const fs = require('fs');
 const VECTOR_TYPES = ['VECTOR', 'LINE', 'REGULAR_POLYGON', 'ELLIPSE'];
 const GROUP_TYPES = ['GROUP', 'BOOLEAN_OPERATION'];
 
-function colorString(color) {
-  return `rgba(${Math.round(color.r*255)}, ${Math.round(color.g*255)}, ${Math.round(color.b*255)}, ${color.a})`;
+const colorString = (color) => {
+  return `rgba(${Math.round(color.r * 255)}, ${Math.round(color.g * 255)}, ${Math.round(color.b * 255)}, ${color.a})`;
 }
 
-function dropShadow(effect) {
+const dropShadow = (effect) => {
   return `${effect.offset.x}px ${effect.offset.y}px ${effect.radius}px ${colorString(effect.color)}`;
 }
 
-function innerShadow(effect) {
+const innerShadow = (effect) => {
   return `inset ${effect.offset.x}px ${effect.offset.y}px ${effect.radius}px ${colorString(effect.color)}`;
 }
 
-function imageURL(hash) {
-  const squash = hash.split('-').join('');
-  return `url(https://s3-us-west-2.amazonaws.com/figma-alpha/img/${squash.substring(0, 4)}/${squash.substring(4, 8)}/${squash.substring(8)})`;
-}
-
-function backgroundSize(scaleMode) {
+const backgroundSize = (scaleMode) => {
   if (scaleMode === 'FILL') {
     return 'cover';
   }
 }
 
-function nodeSort(a, b) {
+const nodeSort = (a, b) => {
   if (a.absoluteBoundingBox.y < b.absoluteBoundingBox.y) return -1;
   else if (a.absoluteBoundingBox.y === b.absoluteBoundingBox.y) return 0;
   else return 1;
 }
 
-function getPaint(paintList) {
+const getPaint = (paintList) => {
   if (paintList && paintList.length > 0) {
     return paintList[paintList.length - 1];
   }
@@ -40,7 +35,7 @@ function getPaint(paintList) {
   return null;
 }
 
-function paintToLinearGradient(paint) {
+const paintToLinearGradient = (paint) => {
   const handles = paint.gradientHandlePositions;
   const handle0 = handles[0];
   const handle1 = handles[1];
@@ -55,7 +50,7 @@ function paintToLinearGradient(paint) {
   return `linear-gradient(${angle}rad, ${stops})`;
 }
 
-function paintToRadialGradient(paint) {
+const paintToRadialGradient = (paint) => {
   const stops = paint.gradientStops.map((stop) => {
     return `${colorString(stop.color)} ${Math.round(stop.position * 60)}%`;
   }).join(', ');
@@ -63,20 +58,20 @@ function paintToRadialGradient(paint) {
   return `radial-gradient(${stops})`;
 }
 
-function expandChildren(node, parent, minChildren, maxChildren, centerChildren, offset) {
+const expandChildren = (node, parent, minChildren, maxChildren, centerChildren, offset) => {
   const children = node.children;
   let added = offset;
 
   if (children) {
-    for (let i=0; i<children.length; i++) {
+    for (let i = 0; i < children.length; i++) {
       const child = children[i];
 
       if (parent != null && (node.type === 'COMPONENT' || node.type === 'INSTANCE')) {
-        child.constraints = {vertical: 'TOP_BOTTOM', horizontal: 'LEFT_RIGHT'};
+        child.constraints = { vertical: 'TOP_BOTTOM', horizontal: 'LEFT_RIGHT' };
       }
 
       if (GROUP_TYPES.indexOf(child.type) >= 0) {
-        added += expandChildren(child, parent, minChildren, maxChildren, centerChildren, added+i);
+        added += expandChildren(child, parent, minChildren, maxChildren, centerChildren, added + i);
         continue;
       }
 
@@ -100,9 +95,12 @@ function expandChildren(node, parent, minChildren, maxChildren, centerChildren, 
   return added - offset;
 }
 
-const createComponent = (component, imgMap, componentMap) => {
+const createComponent = (component, imgMap, imageLinks, componentMap) => {
+  console.log("createComponent: component.name = ", component.name);
   const name = 'C' + component.name.replace(/\W+/g, '');
-  const instance = name + component.id.replace(';', 'S').replace(':', 'D');
+  const instance = name + component.id.replaceAll(';', 'S').replaceAll(':', 'D');
+  console.log("createComponent: name = ", name);
+  console.log("createComponent: instance = ", instance);
 
   let doc = '';
   print(`class ${instance} extends PureComponent {`, '');
@@ -112,19 +110,21 @@ const createComponent = (component, imgMap, componentMap) => {
   const path = `src/components/${name}.js`;
 
   if (!fs.existsSync(path)) {
-    const componentSrc = `import React, { PureComponent } from 'react';
-import { getComponentFromId } from '../figmaComponents';
+    const componentSrc = `
+      import React, { PureComponent } from 'react';
+      import { getComponentFromId } from '../figmaComponents';
 
-export class ${name} extends PureComponent {
-  state = {};
+      export class ${name} extends PureComponent {
+        state = {};
 
-  render() {
-    const Component = getComponentFromId(this.props.nodeId);
-    return <Component {...this.props} {...this.state} />;
-  }
-}
-`;
-    fs.writeFile(path, componentSrc, function(err) {
+        render() {
+          const Component = getComponentFromId(this.props.nodeId);
+          return <Component {...this.props} {...this.state} />;
+        }
+      }
+    `;
+
+    fs.writeFile(path, componentSrc, function (err) {
       if (err) console.log(err);
       console.log(`wrote ${path}`);
     });
@@ -196,8 +196,8 @@ export class ${name} extends PureComponent {
     } else if (cHorizontal === 'SCALE') {
       if (bounds != null) {
         const parentWidth = bounds.left + bounds.width + bounds.right;
-        styles.width = `${bounds.width*100/parentWidth}%`;
-        styles.marginLeft = `${bounds.left*100/parentWidth}%`;
+        styles.width = `${bounds.width * 100 / parentWidth}%`;
+        styles.marginLeft = `${bounds.left * 100 / parentWidth}%`;
       }
     } else {
       if (bounds != null) {
@@ -224,8 +224,8 @@ export class ${name} extends PureComponent {
       outerClass += ' centerer';
       if (bounds != null) {
         const parentHeight = bounds.top + bounds.height + bounds.bottom;
-        styles.height = `${bounds.height*100/parentHeight}%`;
-        styles.top = `${bounds.top*100/parentHeight}%`;
+        styles.height = `${bounds.height * 100 / parentHeight}%`;
+        styles.top = `${bounds.top * 100 / parentHeight}%`;
       }
     } else {
       if (bounds != null) {
@@ -247,7 +247,7 @@ export class ${name} extends PureComponent {
             styles.backgroundColor = colorString(lastFill.color);
             styles.opacity = lastFill.opacity;
           } else if (lastFill.type === 'IMAGE') {
-            styles.backgroundImage = imageURL(lastFill.imageRef);
+            styles.backgroundImage = `url(${imageLinks[lastFill.imageRef]})`;
             styles.backgroundSize = backgroundSize(lastFill.scaleMode);
           } else if (lastFill.type === 'GRADIENT_LINEAR') {
             styles.background = paintToLinearGradient(lastFill);
@@ -257,7 +257,7 @@ export class ${name} extends PureComponent {
         }
 
         if (node.effects) {
-          for (let i=0; i<node.effects.length; i++) {
+          for (let i = 0; i < node.effects.length; i++) {
             const effect = node.effects[i];
             if (effect.type === 'DROP_SHADOW') {
               styles.boxShadow = dropShadow(effect);
@@ -275,6 +275,11 @@ export class ${name} extends PureComponent {
             const weight = node.strokeWeight || 1;
             styles.border = `${weight}px solid ${colorString(lastStroke.color)}`;
           }
+        }
+
+        const cornerRadius = node.cornerRadius;
+        if (cornerRadius) {
+          styles.borderRadius = `${cornerRadius}px ${cornerRadius}px ${cornerRadius}px ${cornerRadius}px`;
         }
 
         const cornerRadii = node.rectangleCornerRadii;
@@ -368,9 +373,9 @@ export class ${name} extends PureComponent {
       printDiv(styles, outerStyle, indent);
     }
 
-    if (node.id !== component.id && node.name.charAt(0) === '#') {
+    if (node.id !== component.id) {
       print(`    <C${node.name.replace(/\W+/g, '')} {...this.props} nodeId="${node.id}" />`, indent);
-      createComponent(node, imgMap, componentMap);
+      createComponent(node, imgMap, imageLinks, componentMap);
     } else if (node.type === 'VECTOR') {
       print(`    <div className="vector" dangerouslySetInnerHTML={{__html: \`${imgMap[node.id]}\`}} />`, indent);
     } else {
@@ -425,7 +430,7 @@ export class ${name} extends PureComponent {
   print('    );', '');
   print('  }', '');
   print('}', '');
-  componentMap[component.id] = {instance, name, doc};
+  componentMap[component.id] = { instance, name, doc };
 }
 
-module.exports = {createComponent, colorString}
+module.exports = { createComponent, colorString }

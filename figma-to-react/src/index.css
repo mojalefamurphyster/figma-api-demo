@@ -7,7 +7,7 @@ body {
   min-height: 100%;
 }
 
-.master {
+.main {
   position: absolute;
   overflow: hidden;
   width: 100%;
